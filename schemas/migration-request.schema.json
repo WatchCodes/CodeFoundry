@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/WatchCodes/CodeFoundry/main/schemas/migration-request.schema.json",
+  "title": "MigrationRequest",
+  "description": "Produced by RepoAtlas. Consumed by CodeFoundry. One per source repository. The approval to migrate.",
+  "type": "object",
+  "required": ["schema_version", "batch_id", "source", "destination_owner", "target_name", "sha", "license", "action", "provenance"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "$ref": "common.definitions.json#/$defs/schema_version" },
+    "batch_id": { "$ref": "common.definitions.json#/$defs/batch_id" },
+    "source": { "$ref": "common.definitions.json#/$defs/repository_ref" },
+    "destination_owner": { "type": "string", "pattern": "^[A-Za-z0-9-]+$", "description": "Approved owner. WatchCodes org or an allowlisted user." },
+    "target_name": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,100}$", "description": "From the canonical rename algorithm; already collision-checked by RepoAtlas." },
+    "sha": { "$ref": "common.definitions.json#/$defs/sha" },
+    "license": { "$ref": "common.definitions.json#/$defs/license_spdx", "description": "Must not be null/NOASSERTION/OTHER for action=create; CodeFoundry rejects." },
+    "action": { "$ref": "common.definitions.json#/$defs/action" },
+    "subtree_path": { "type": "string", "description": "Required when action=import_subtree; forbidden otherwise." },
+    "provenance": {
+      "type": "object",
+      "required": ["origin", "discovered_in"],
+      "additionalProperties": false,
+      "properties": {
+        "origin": { "$ref": "common.definitions.json#/$defs/origin" },
+        "discovered_in": { "$ref": "common.definitions.json#/$defs/repository_ref" },
+        "manifest_batch_id": { "$ref": "common.definitions.json#/$defs/batch_id" }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "action": { "const": "import_subtree" } } },
+      "then": { "required": ["subtree_path"] }
+    },
+    {
+      "if": { "properties": { "action": { "const": "create" } } },
+      "then": { "properties": { "license": { "type": "string" } } }
+    },
+    {
+      "if": { "properties": { "action": { "const": "create" } } },
+      "then": {
+        "properties": { "subtree_path": { "maxProperties": 0 } }
+      }
+    }
+  ]
+}

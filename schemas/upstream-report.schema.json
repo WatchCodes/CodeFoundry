@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/WatchCodes/CodeFoundry/main/schemas/upstream-report.schema.json",
+  "title": "UpstreamReport",
+  "description": "Produced by SourceSentinel. Consumed by NastechBridge. One per monitored destination per detection run.",
+  "type": "object",
+  "required": ["schema_version", "repo", "upstream", "upstream_sha", "behind_by", "detected_at"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "$ref": "common.definitions.json#/$defs/schema_version" },
+    "repo": { "$ref": "common.definitions.json#/$defs/repository_ref", "description": "The destination being monitored." },
+    "upstream": { "$ref": "common.definitions.json#/$defs/repository_ref" },
+    "upstream_sha": { "$ref": "common.definitions.json#/$defs/sha", "description": "New upstream head; equals the mapped SHA when behind_by=0." },
+    "behind_by": { "type": "integer", "minimum": 0, "description": "Commits the destination's snapshot is behind the upstream head." },
+    "detected_at": { "type": "string", "format": "date-time" },
+    "upstream_state": {
+      "type": "string",
+      "enum": ["active", "archived", "missing", "history_rewritten"],
+      "description": "history_rewritten -> REQUIRES_REVIEW; needs a human, not a rebuild."
+    }
+  }
+}

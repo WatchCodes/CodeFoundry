@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/WatchCodes/CodeFoundry/main/schemas/repository-mapping.schema.json",
+  "title": "RepositoryMapping",
+  "description": "Produced by CodeLineage from evidence. Consumed by SourceSentinel and the 100ways brander's mapping table.",
+  "type": "object",
+  "required": ["schema_version", "source", "destination", "sha", "license", "status", "verified_at"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "$ref": "common.definitions.json#/$defs/schema_version" },
+    "source": { "$ref": "common.definitions.json#/$defs/repository_ref" },
+    "destination": { "$ref": "common.definitions.json#/$defs/repository_ref" },
+    "sha": { "$ref": "common.definitions.json#/$defs/sha" },
+    "license": { "$ref": "common.definitions.json#/$defs/license_spdx" },
+    "status": { "$ref": "common.definitions.json#/$defs/status", "description": "Mirror of the verified status; VERIFIED recorded only with evidence." },
+    "verified_at": { "type": "string", "format": "date-time" },
+    "superseded_by": { "$ref": "common.definitions.json#/$defs/repository_ref", "description": "Set when replaced. Superseded mappings are marked, never deleted." }
+  }
+}

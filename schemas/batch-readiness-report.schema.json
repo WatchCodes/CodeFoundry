@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/WatchCodes/CodeFoundry/main/schemas/batch-readiness-report.schema.json",
+  "title": "BatchReadinessReport",
+  "description": "Produced by NastechBridge. Consumed by NastechResearch/100ways. The readiness gate is fail-closed.",
+  "type": "object",
+  "required": ["schema_version", "batch_id", "expected", "verified", "failed", "pending", "ready", "generated_at"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "$ref": "common.definitions.json#/$defs/schema_version" },
+    "batch_id": { "$ref": "common.definitions.json#/$defs/batch_id" },
+    "expected": { "type": "array", "items": { "$ref": "common.definitions.json#/$defs/repository_ref" }, "description": "Inventory from the DiscoveryManifest." },
+    "verified": { "type": "array", "items": { "$ref": "common.definitions.json#/$defs/repository_ref" } },
+    "failed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["repo", "reason"],
+        "properties": {
+          "repo": { "$ref": "common.definitions.json#/$defs/repository_ref" },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "pending": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["repo", "status"],
+        "properties": {
+          "repo": { "$ref": "common.definitions.json#/$defs/repository_ref" },
+          "status": { "$ref": "common.definitions.json#/$defs/status" }
+        }
+      }
+    },
+    "ready": {
+      "type": "boolean",
+      "description": "true only when: expected == verified inventory, every destination exists with correct name+owner, every mapping recorded and consistent, no FAILED/REQUIRES_REVIEW/missing report, every repo GATED. Otherwise false."
+    },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "blocking": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Exact missing/failed items; empty when ready."
+    }
+  }
+}

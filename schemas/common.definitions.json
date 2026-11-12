@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/WatchCodes/CodeFoundry/main/schemas/common.definitions.json",
+  "$comment": "Shared definitions for the six WatchCodes factory contracts. Required on every document: schema_version (const 1).",
+  "$defs": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Contract version. Bump on any breaking change."
+    },
+    "batch_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
+      "description": "Idempotency key part 1. One discovery batch."
+    },
+    "repository_ref": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9-]+/[A-Za-z0-9._-]{1,100}$",
+      "description": "owner/name. Case-insensitive for comparison; original spelling preserved."
+    },
+    "sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$",
+      "description": "Full 40-hex git commit SHA."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["DISCOVERED", "QUEUED", "CREATING", "CREATED", "VERIFYING", "VERIFIED", "GATED", "READY", "FAILED", "REQUIRES_REVIEW"],
+      "description": "Authoritative factory ladder. VERIFIED = right name+owner. READY only from NastechBridge."
+    },
+    "action": {
+      "type": "string",
+      "enum": ["create", "import_subtree"]
+    },
+    "license_spdx": {
+      "type": ["string", "null"],
+      "enum": ["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "Unlicense", "CC0-1.0", "GPL-2.0-only", "GPL-3.0-only", "LGPL-2.1-only", "LGPL-3.0-only", "AGPL-3.0-only", "MPL-2.0", "NOASSERTION", "OTHER", null],
+      "description": "SPDX id when detected. NOASSERTION/OTHER -> REQUIRES_REVIEW."
+    },
+    "origin": {
+      "type": "string",
+      "enum": ["hermes", "nous", "allowlisted"],
+      "description": "Discovery scope. nous never routes to WatchCodes."
+    }
+  }
+}

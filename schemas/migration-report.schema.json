@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/WatchCodes/CodeFoundry/main/schemas/migration-report.schema.json",
+  "title": "MigrationReport",
+  "description": "Produced by CodeFoundry. Exactly one per batch_id + source. Consumed by NastechBridge. Written by CodeFoundry only.",
+  "type": "object",
+  "required": ["schema_version", "batch_id", "source", "destination", "status", "checks", "receipt", "license", "attribution", "error"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "$ref": "common.definitions.json#/$defs/schema_version" },
+    "batch_id": { "$ref": "common.definitions.json#/$defs/batch_id" },
+    "source": { "$ref": "common.definitions.json#/$defs/repository_ref" },
+    "destination": { "$ref": "common.definitions.json#/$defs/repository_ref" },
+    "status": { "$ref": "common.definitions.json#/$defs/status", "description": "Terminal statuses: VERIFIED, FAILED, REQUIRES_REVIEW." },
+    "checks": {
+      "type": "object",
+      "required": ["created", "named", "owned", "gated", "license_kept", "credits"],
+      "additionalProperties": false,
+      "properties": {
+        "created": { "type": "boolean" },
+        "named": { "type": "boolean", "description": "Destination name matches target_name exactly." },
+        "owned": { "type": "boolean", "description": "Destination owner matches destination_owner exactly." },
+        "gated": { "type": "boolean", "description": "Zero-brand gate passed (pinned engine, locked paths excluded)." },
+        "license_kept": { "type": "boolean", "description": "LICENSE verbatim from upstream at SHA." },
+        "credits": { "type": "boolean", "description": "CREDITS.md carries one attribution line per upstream." }
+      }
+    },
+    "receipt": {
+      "type": "object",
+      "description": "Idempotency + resumability evidence.",
+      "required": ["idempotency_key", "destination_repo_id", "source_sha", "destination_sha", "checkpoints"],
+      "additionalProperties": false,
+      "properties": {
+        "idempotency_key": { "type": "string", "pattern": "^[A-Za-z0-9._-]+::.+$", "description": "batch_id::source" },
+        "destination_repo_id": { "type": "integer", "description": "GitHub repo id, recorded before branding." },
+        "source_sha": { "$ref": "common.definitions.json#/$defs/sha" },
+        "destination_sha": { "$ref": "common.definitions.json#/$defs/sha", "description": "Head of the pushed snapshot commit." },
+        "checkpoints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["stage", "at", "ok"],
+            "properties": {
+              "stage": { "type": "string", "enum": ["validate", "scan", "clone", "create", "push", "brand", "gate", "verify", "report"] },
+              "at": { "type": "string", "format": "date-time" },
+              "ok": { "type": "boolean" },
+              "detail": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "license": {
+      "type": "object",
+      "required": ["detected", "preserved"],
+      "additionalProperties": false,
+      "properties": {
+        "detected": { "$ref": "common.definitions.json#/$defs/license_spdx" },
+        "preserved": { "type": "boolean" },
+        "review_required": { "type": "boolean" }
+      }
+    },
+    "attribution": {
+      "type": "object",
+      "required": ["notice", "credits"],
+      "additionalProperties": false,
+      "properties": {
+        "notice": { "type": "boolean" },
+        "credits": { "type": "boolean" }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "files_checked": { "type": "integer" },
+        "branding_findings": { "type": "integer", "description": "Non-blocking findings outside locked paths." },
+        "integrity": { "type": "boolean" }
+      }
+    },
+    "pr_url": { "type": ["string", "null"], "format": "uri", "description": "The human-approved publication PR, if any. CodeFoundry records it; authorship undecided." },
+    "error": { "type": ["string", "null"], "description": "null on success; the exact failure otherwise." }
+  }
+}
