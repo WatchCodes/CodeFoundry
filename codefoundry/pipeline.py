@@ -30,7 +30,7 @@ def _failed_report(req: dict[str, Any], *, stage: str, reason: str, checkpoints:
     source = str(req.get("source", "unknown/unknown"))
     destination = f"{req.get('destination_owner','unknown')}/{req.get('target_name','unknown')}"
     sha = str(req.get("sha", "0" * 40))
-    lic = _license_obj(detected_license or req.get("license") if isinstance(req.get("license"), str) else None)
+    lic = _license_obj(detected_license)
     return build_migration_report(
         batch_id=batch_id,
         source=source,
