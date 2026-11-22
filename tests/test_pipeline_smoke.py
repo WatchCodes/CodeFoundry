@@ -40,4 +40,7 @@ def test_dry_run_slice_local_repo(tmp_path: Path):
     assert report["batch_id"] == "b-test"
     assert report["receipt"]["source_sha"] == sha
     assert report["checks"]["gated"] is True
+    assert report["checks"]["credits"] is True
+    assert report["checks"]["license_kept"] is True
     assert report["verification"]["branding_findings"] == 0
+    assert report["attribution"]["credits"] is True

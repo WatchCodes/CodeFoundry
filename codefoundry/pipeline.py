@@ -12,7 +12,9 @@ from typing import Any
 
 from .brand import run_brand
 from .clone import clone_snapshot
+from .credits import ensure_credits, ensure_notice
 from .intake import IntakeError, validate_migration_request
+from .receipts import ReceiptStore
 from .report import build_migration_report, make_checkpoint, now_iso
 from .scan import scan_repo
 from .ship import ship_private_repo
@@ -52,6 +54,7 @@ def run_slice(
     dry_run: bool = True,
     push: bool = False,
     clone_source: str | None = None,
+    receipts_dir: str | Path | None = None,
 ) -> dict[str, Any]:
     checkpoints: list[dict[str, Any]] = []
     try:
@@ -65,6 +68,10 @@ def run_slice(
     destination = f"{req['destination_owner']}/{req['target_name']}"
     sha = req["sha"]
     clone_ref = clone_source or source
+    store = ReceiptStore(receipts_dir or (Path(workdir) / "receipts" if workdir else Path(tempfile.gettempdir()) / "codefoundry-receipts"))
+    existing = store.get(batch_id, source)
+    if existing and existing.get("destination_repo_id"):
+        checkpoints.append(make_checkpoint("receipt", True, "existing destination"))
 
     with tempfile.TemporaryDirectory(prefix="codefoundry-") as td:
         base = Path(workdir) if workdir else Path(td)
@@ -96,6 +103,16 @@ def run_slice(
         except Exception as e:
             return _failed_report(req, stage="brand", reason=f"brand failed: {e}", checkpoints=checkpoints, detected_license=detected)
 
+        # attribution artifacts
+        try:
+            ensure_credits(clone_dir, source=source, sha=sha, license_spdx=lic["detected"])
+            ensure_notice(clone_dir, source=source, sha=sha)
+            checkpoints.append(make_checkpoint("verify", True, "credits+notice"))
+            credits_ok = True
+        except Exception as e:
+            checkpoints.append(make_checkpoint("verify", False, f"credits: {e}"))
+            credits_ok = False
+
         brand_clean = bool(brand.get("scan_passed"))
         checkpoints.append(make_checkpoint("gate", brand_clean, f"violations={len(brand.get('scan_violations', []))}"))
 
@@ -115,16 +132,13 @@ def run_slice(
             checkpoints.append(make_checkpoint("verify", True, "dry-run"))
 
         checks = {
-            "created": created or dry_run,  # dry-run: creation intent verified, not actually created
+            "created": created,
             "named": req["target_name"] == destination.split("/", 1)[1],
             "owned": req["destination_owner"] == destination.split("/", 1)[0],
             "gated": brand_clean,
             "license_kept": bool(lic["preserved"]),
-            "credits": False,  # not implemented in this slice yet
+            "credits": bool(credits_ok),
         }
-        # For dry-run, created means "would create" - but schema expects boolean; keep true only if dry-run? Better be honest: dry-run not created.
-        if dry_run:
-            checks["created"] = False
         verification = {
             "files_checked": int(brand.get("files_changed", 0)),
             "branding_findings": len(brand.get("scan_violations", [])),
@@ -135,9 +149,10 @@ def run_slice(
         if not brand_clean:
             status = "FAILED"
             error = "brand scan violations remain"
-        elif not checks["credits"]:
+        elif not all(checks.values()):
+            missing = [k for k, v in checks.items() if not v]
             status = "REQUIRES_REVIEW"
-            error = "credits not generated in this slice"
+            error = f"checks not satisfied: {', '.join(missing)}"
         report = build_migration_report(
             batch_id=batch_id,
             source=source,
@@ -146,15 +161,16 @@ def run_slice(
             checks=checks,
             receipt={
                 "idempotency_key": f"{batch_id}::{source}",
-                "destination_repo_id": 0,
+                "destination_repo_id": int((existing or {}).get("destination_repo_id", 0)),
                 "source_sha": sha,
                 "destination_sha": ship_sha,
                 "checkpoints": checkpoints,
             },
             license_info=lic,
-            attribution={"notice": False, "credits": False},
+            attribution={"notice": bool(credits_ok), "credits": bool(credits_ok)},
             verification=verification,
             pr_url=None,
             error=error,
         )
+        store.put(batch_id, source, report["receipt"])
         return report
