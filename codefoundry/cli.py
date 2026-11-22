@@ -26,6 +26,11 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--no-dry-run", dest="dry_run", action="store_false")
     r.add_argument("--push", action="store_true", default=False)
     r.add_argument("--clone-source", default=None)
+    r.add_argument("--receipts-dir", default=None)
+    r.add_argument("--reports-dir", default=None)
+    r.add_argument("--reports-branch-repo", default=None, help="Git repo for append-only reports branch")
+    r.add_argument("--reports-branch", default="codefoundry/reports")
+    r.add_argument("--reports-branch-push", action="store_true", default=False)
 
     a = p.parse_args(argv)
     if a.cmd == "validate":
@@ -39,7 +44,24 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     if a.cmd == "run":
         req = json.loads(Path(a.request).read_text(encoding="utf-8"))
-        report = run_slice(req, workdir=a.workdir, engine_path=a.engine_path, dry_run=a.dry_run, push=a.push, clone_source=a.clone_source)
+        report = run_slice(
+            req,
+            workdir=a.workdir,
+            engine_path=a.engine_path,
+            dry_run=a.dry_run,
+            push=a.push,
+            clone_source=a.clone_source,
+            receipts_dir=a.receipts_dir,
+            reports_dir=a.reports_dir,
+        )
+        if a.reports_branch_repo:
+            from .reports import write_report_to_branch
+            write_report_to_branch(
+                report,
+                repo_dir=a.reports_branch_repo,
+                branch=a.reports_branch,
+                push=a.reports_branch_push and not a.dry_run,
+            )
         print(json.dumps(report, indent=2))
         return 0 if report.get("status") == "VERIFIED" else 2
     return 2

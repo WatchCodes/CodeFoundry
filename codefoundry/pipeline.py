@@ -15,7 +15,8 @@ from .clone import clone_snapshot
 from .credits import ensure_credits, ensure_notice
 from .intake import IntakeError, validate_migration_request
 from .receipts import ReceiptStore
-from .report import build_migration_report, make_checkpoint, now_iso
+from .report import build_migration_report, make_checkpoint
+from .reports import write_report
 from .scan import scan_repo
 from .ship import ship_private_repo
 
@@ -25,11 +26,19 @@ def _license_obj(detected: str | None) -> dict[str, Any]:
     return {"detected": spdx, "preserved": spdx not in {"NOASSERTION", "OTHER"}, "review_required": spdx in {"NOASSERTION", "OTHER"}}
 
 
+def _safe_sha(value: Any) -> str:
+    s = str(value) if value is not None else ""
+    if len(s) == 40 and all(c in "0123456789abcdef" for c in s.lower()):
+        return s.lower()
+    return "0" * 40
+
+
 def _failed_report(req: dict[str, Any], *, stage: str, reason: str, checkpoints: list[dict[str, Any]], detected_license: str | None = None, destination_sha: str | None = None) -> dict[str, Any]:
     batch_id = str(req.get("batch_id", "unknown"))
     source = str(req.get("source", "unknown/unknown"))
     destination = f"{req.get('destination_owner','unknown')}/{req.get('target_name','unknown')}"
-    sha = str(req.get("sha", "0" * 40))
+    sha = _safe_sha(req.get("sha"))
+    dest_sha = _safe_sha(destination_sha) if destination_sha else sha
     lic = _license_obj(detected_license)
     return build_migration_report(
         batch_id=batch_id,
@@ -37,7 +46,7 @@ def _failed_report(req: dict[str, Any], *, stage: str, reason: str, checkpoints:
         destination=destination,
         status="FAILED",
         checks={"created": False, "named": False, "owned": False, "gated": False, "license_kept": lic["preserved"], "credits": False},
-        receipt={"idempotency_key": f"{batch_id}::{source}", "destination_repo_id": 0, "source_sha": sha, "destination_sha": destination_sha or sha, "checkpoints": checkpoints + [make_checkpoint(stage, False, reason)]},
+        receipt={"idempotency_key": f"{batch_id}::{source}", "destination_repo_id": 0, "source_sha": sha, "destination_sha": dest_sha, "checkpoints": checkpoints + [make_checkpoint(stage, False, reason)]},
         license_info=lic,
         attribution={"notice": False, "credits": False},
         verification={"files_checked": 0, "branding_findings": 0, "integrity": False},
@@ -55,13 +64,20 @@ def run_slice(
     push: bool = False,
     clone_source: str | None = None,
     receipts_dir: str | Path | None = None,
+    reports_dir: str | Path | None = None,
 ) -> dict[str, Any]:
     checkpoints: list[dict[str, Any]] = []
+
+    def _emit(report: dict[str, Any]) -> dict[str, Any]:
+        if reports_dir:
+            write_report(report, reports_dir)
+        return report
+
     try:
         req = validate_migration_request(request)
         checkpoints.append(make_checkpoint("validate", True))
     except IntakeError as e:
-        return _failed_report(request if isinstance(request, dict) else {}, stage="validate", reason=f"intake: {e}", checkpoints=checkpoints)
+        return _emit(_failed_report(request if isinstance(request, dict) else {}, stage="validate", reason=f"intake: {e}", checkpoints=checkpoints))
 
     batch_id = req["batch_id"]
     source = req["source"]
@@ -83,25 +99,25 @@ def run_slice(
             scan_clone = clone_snapshot(clone_ref, sha, scan_dir)
             checkpoints.append(make_checkpoint("scan", True, f"scanned {scan_clone.file_count} files"))
         except Exception as e:
-            return _failed_report(req, stage="scan", reason=f"scan clone failed: {e}", checkpoints=checkpoints)
+            return _emit(_failed_report(req, stage="scan", reason=f"scan clone failed: {e}", checkpoints=checkpoints))
 
         scan = scan_repo(scan_dir, source=source, sha=sha).to_dict()
         detected = scan.get("detected_license")
         lic = _license_obj(detected)
         if not lic["preserved"]:
-            return _failed_report(req, stage="scan", reason=f"undetected or unsupported license: {detected!r}", checkpoints=checkpoints, detected_license=detected)
+            return _emit(_failed_report(req, stage="scan", reason=f"undetected or unsupported license: {detected!r}", checkpoints=checkpoints, detected_license=detected))
 
         try:
             branded_clone = clone_snapshot(clone_ref, sha, clone_dir)
             checkpoints.append(make_checkpoint("clone", True, f"cloned {branded_clone.file_count} files"))
         except Exception as e:
-            return _failed_report(req, stage="clone", reason=f"clone failed: {e}", checkpoints=checkpoints, detected_license=detected)
+            return _emit(_failed_report(req, stage="clone", reason=f"clone failed: {e}", checkpoints=checkpoints, detected_license=detected))
 
         try:
             brand = run_brand(clone_dir, engine_path=engine_path, dry_run=False).to_dict()
             checkpoints.append(make_checkpoint("brand", True, f"changed={brand.get('files_changed')}"))
         except Exception as e:
-            return _failed_report(req, stage="brand", reason=f"brand failed: {e}", checkpoints=checkpoints, detected_license=detected)
+            return _emit(_failed_report(req, stage="brand", reason=f"brand failed: {e}", checkpoints=checkpoints, detected_license=detected))
 
         # attribution artifacts
         try:
@@ -127,7 +143,7 @@ def run_slice(
                 if push:
                     checkpoints.append(make_checkpoint("push", True, ship.get("repo_url", "")))
             except Exception as e:
-                return _failed_report(req, stage="create", reason=f"ship failed: {e}", checkpoints=checkpoints, detected_license=detected, destination_sha=ship_sha)
+                return _emit(_failed_report(req, stage="create", reason=f"ship failed: {e}", checkpoints=checkpoints, detected_license=detected, destination_sha=ship_sha))
         else:
             checkpoints.append(make_checkpoint("verify", True, "dry-run"))
 
@@ -173,4 +189,4 @@ def run_slice(
             error=error,
         )
         store.put(batch_id, source, report["receipt"])
-        return report
+        return _emit(report)
