@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "batch_id": "b-lab-created-unverified",
+  "source": "Test/Lab",
+  "destination": "WatchCodes/nastech-lab",
+  "status": "REQUIRES_REVIEW",
+  "checks": {
+    "created": true,
+    "named": true,
+    "owned": true,
+    "gated": true,
+    "license_kept": true,
+    "credits": true
+  },
+  "receipt": {
+    "idempotency_key": "b-lab-created-unverified::Test/Lab",
+    "destination_repo_id": 12345,
+    "source_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "destination_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "checkpoints": [
+      {"stage": "start", "at": "2026-01-01T00:00:00Z", "ok": true, "detail": "run_slice"},
+      {"stage": "validate", "at": "2026-01-01T00:00:01Z", "ok": true, "detail": "request valid"},
+      {"stage": "receipt", "at": "2026-01-01T00:00:02Z", "ok": true, "detail": "no existing receipt"},
+      {"stage": "scan", "at": "2026-01-01T00:00:03Z", "ok": true, "detail": "scanned 2 files"},
+      {"stage": "license", "at": "2026-01-01T00:00:04Z", "ok": true, "detail": "detected='MIT' spdx='MIT'"},
+      {"stage": "clone", "at": "2026-01-01T00:00:05Z", "ok": true, "detail": "cloned 2 files"},
+      {"stage": "brand", "at": "2026-01-01T00:00:06Z", "ok": true, "detail": "changed=0 replacements=0"},
+      {"stage": "credits", "at": "2026-01-01T00:00:07Z", "ok": true, "detail": "credits and notice ensured"},
+      {"stage": "gate", "at": "2026-01-01T00:00:08Z", "ok": true, "detail": "violations=0"},
+      {"stage": "ship", "at": "2026-01-01T00:00:09Z", "ok": true, "detail": "destination=WatchCodes/nastech-lab dry_run=False"},
+      {"stage": "push", "at": "2026-01-01T00:00:10Z", "ok": true, "detail": "https://github.com/WatchCodes/nastech-lab"},
+      {"stage": "verify", "at": "2026-01-01T00:00:11Z", "ok": false, "detail": "post-push verification pending"},
+      {"stage": "report", "at": "2026-01-01T00:00:12Z", "ok": true, "detail": "status=REQUIRES_REVIEW"}
+    ]
+  },
+  "license": {
+    "detected": "MIT",
+    "preserved": true,
+    "review_required": false
+  },
+  "attribution": {
+    "notice": true,
+    "credits": true
+  },
+  "verification": {
+    "files_checked": 2,
+    "branding_findings": 0,
+    "integrity": false
+  },
+  "pr_url": null,
+  "error": "verify: post-push verification incomplete"
+}

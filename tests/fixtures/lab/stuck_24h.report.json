@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "batch_id": "b-lab-stuck",
+  "source": "Test/Lab",
+  "destination": "WatchCodes/nastech-lab",
+  "status": "REQUIRES_REVIEW",
+  "checks": {
+    "created": false,
+    "named": true,
+    "owned": true,
+    "gated": false,
+    "license_kept": true,
+    "credits": false
+  },
+  "receipt": {
+    "idempotency_key": "b-lab-stuck::Test/Lab",
+    "destination_repo_id": 0,
+    "source_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "destination_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "checkpoints": [
+      {"stage": "start", "at": "2026-01-01T00:00:00Z", "ok": true, "detail": "run_slice"},
+      {"stage": "validate", "at": "2026-01-01T00:00:01Z", "ok": true, "detail": "request valid"},
+      {"stage": "scan", "at": "2026-01-01T00:00:02Z", "ok": true, "detail": "scanned 2 files"},
+      {"stage": "clone", "at": "2026-01-01T00:00:03Z", "ok": true, "detail": "cloned 2 files"},
+      {"stage": "brand", "at": "2026-01-01T00:00:04Z", "ok": true, "detail": "changed=1 replacements=1"},
+      {"stage": "gate", "at": "2026-01-01T00:00:05Z", "ok": false, "detail": "violations=1"}
+    ]
+  },
+  "license": {
+    "detected": "MIT",
+    "preserved": true,
+    "review_required": false
+  },
+  "attribution": {
+    "notice": false,
+    "credits": false
+  },
+  "verification": {
+    "files_checked": 1,
+    "branding_findings": 1,
+    "integrity": false
+  },
+  "pr_url": null,
+  "error": "gate: brand scan violations remain [violations=1]"
+}

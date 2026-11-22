@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "scenarios": {
+    "permissive": {"expected_status": "REQUIRES_REVIEW", "checks": {"created": false, "named": true, "owned": true, "gated": true, "license_kept": true, "credits": true}},
+    "no_licence": {"expected_status": "FAILED", "checks": {"license_kept": false}},
+    "copyleft": {"expected_status_any": ["VERIFIED", "REQUIRES_REVIEW"], "license_detected": "GPL-3.0-only"},
+    "hermes_in_filenames": {"checks": {"gated": true}},
+    "nous_in_docs": {"checks": {"gated": true}},
+    "lockfiles": {"expected_status_any": ["VERIFIED", "REQUIRES_REVIEW"]},
+    "submodules": {"expected_status_any": ["VERIFIED", "REQUIRES_REVIEW", "FAILED"]},
+    "lfs": {"expected_status_any": ["VERIFIED", "REQUIRES_REVIEW", "FAILED"]},
+    "binaries": {"expected_status_any": ["VERIFIED", "REQUIRES_REVIEW"]},
+    "broken_urls": {"expected_status_any": ["VERIFIED", "REQUIRES_REVIEW"]},
+    "missing_attribution": {"expected_status": "REQUIRES_REVIEW", "checks": {"credits": false}},
+    "duplicate_destination": {"expected_status_any": ["VERIFIED", "REQUIRES_REVIEW", "FAILED"]},
+    "invalid_owner": {"expected_status": "FAILED"},
+    "invalid_sha": {"expected_status": "FAILED"},
+    "rate_limit": {"expected_status": "FAILED"},
+    "interrupted_clone": {"expected_status": "FAILED"},
+    "interrupted_push": {"expected_status": "FAILED"},
+    "failed_branding_gate": {"expected_status": "FAILED", "checks": {"gated": false}},
+    "created_but_unverified": {"expected_status": "REQUIRES_REVIEW", "checks": {"created": true}},
+    "stuck_24h": {"expected_status_any": ["FAILED", "REQUIRES_REVIEW"]},
+    "dry_run_equivalence": {"equivalent": true}
+  }
+}
