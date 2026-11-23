@@ -7,6 +7,8 @@ No attribution hints. Engine pinned to /home/nascode/work/100ways.
 
 from __future__ import annotations
 
+import os
+
 import json
 import shutil
 import subprocess
@@ -21,7 +23,7 @@ from codefoundry.contracts import validate
 from codefoundry.pipeline import run_slice
 from codefoundry.report import build_migration_report, make_checkpoint
 
-ENGINE = "/home/nascode/work/100ways"
+ENGINE = os.environ.get("CODEFOUNDRY_100WAYS_PATH", "/home/nascode/work/100ways")
 FIXTURES = Path(__file__).parent / "fixtures" / "lab"
 EXPECTATIONS = json.loads((FIXTURES / "expectations.json").read_text(encoding="utf-8"))
 

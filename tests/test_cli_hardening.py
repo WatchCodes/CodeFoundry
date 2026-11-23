@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -105,7 +106,7 @@ def test_run_json_output(tmp_path):
     req = make_request(sha)
     req_file = tmp_path / "req.json"
     req_file.write_text(json.dumps(req), encoding="utf-8")
-    r = run_cli(["run", str(req_file), "--clone-source", src, "--engine-path", "/home/nascode/work/100ways"])
+    r = run_cli(["run", str(req_file), "--clone-source", src, "--engine-path", os.environ.get("CODEFOUNDRY_100WAYS_PATH", "/home/nascode/work/100ways")])
     assert r.returncode in (0, 2)
     report = json.loads(r.stdout)
     assert report["schema_version"] == 1
@@ -119,7 +120,7 @@ def test_run_dry_run_default_true(tmp_path):
     req = make_request(sha)
     req_file = tmp_path / "req.json"
     req_file.write_text(json.dumps(req), encoding="utf-8")
-    r = run_cli(["run", str(req_file), "--clone-source", src, "--engine-path", "/home/nascode/work/100ways"])
+    r = run_cli(["run", str(req_file), "--clone-source", src, "--engine-path", os.environ.get("CODEFOUNDRY_100WAYS_PATH", "/home/nascode/work/100ways")])
     report = json.loads(r.stdout)
     # dry-run should not create/push external repo; checks.created false in dry-run path
     assert report["checks"]["created"] is False
@@ -156,7 +157,7 @@ def test_run_output_file(tmp_path):
     req_file = tmp_path / "req.json"
     req_file.write_text(json.dumps(req), encoding="utf-8")
     out = tmp_path / "out" / "report.json"
-    r = run_cli(["run", str(req_file), "--clone-source", src, "--engine-path", "/home/nascode/work/100ways", "--output", str(out)])
+    r = run_cli(["run", str(req_file), "--clone-source", src, "--engine-path", os.environ.get("CODEFOUNDRY_100WAYS_PATH", "/home/nascode/work/100ways"), "--output", str(out)])
     assert r.returncode in (0, 2)
     assert out.exists()
     file_report = json.loads(out.read_text(encoding="utf-8"))
@@ -192,7 +193,7 @@ def test_dry_run_push_no_external_write(tmp_path):
     req_file = tmp_path / "req.json"
     req_file.write_text(json.dumps(req), encoding="utf-8")
     r = run_cli([
-        "run", str(req_file), "--clone-source", src, "--engine-path", "/home/nascode/work/100ways",
+        "run", str(req_file), "--clone-source", src, "--engine-path", os.environ.get("CODEFOUNDRY_100WAYS_PATH", "/home/nascode/work/100ways"),
         "--reports-branch-repo", str(repo), "--reports-branch", "reports/test", "--reports-branch-push",
     ])
     assert r.returncode in (0, 2)
@@ -209,7 +210,7 @@ def test_reports_dir_and_receipts_dir_accepted(tmp_path):
     reports = tmp_path / "reports"
     receipts = tmp_path / "receipts"
     r = run_cli([
-        "run", str(req_file), "--clone-source", src, "--engine-path", "/home/nascode/work/100ways",
+        "run", str(req_file), "--clone-source", src, "--engine-path", os.environ.get("CODEFOUNDRY_100WAYS_PATH", "/home/nascode/work/100ways"),
         "--reports-dir", str(reports), "--receipts-dir", str(receipts),
     ])
     assert r.returncode in (0, 2)

@@ -1,3 +1,4 @@
+import os
 import subprocess
 from pathlib import Path
 
@@ -35,7 +36,7 @@ def test_dry_run_slice_local_repo(tmp_path: Path):
             "manifest_batch_id": "b-test",
         },
     }
-    report = run_slice(req, dry_run=True, engine_path="/home/nascode/work/100ways", clone_source=src)
+    report = run_slice(req, dry_run=True, engine_path=os.environ.get("CODEFOUNDRY_100WAYS_PATH", "/home/nascode/work/100ways"), clone_source=src)
     assert report["status"] in {"VERIFIED", "REQUIRES_REVIEW", "FAILED"}
     assert report["batch_id"] == "b-test"
     assert report["receipt"]["source_sha"] == sha

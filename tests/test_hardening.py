@@ -1,3 +1,4 @@
+import os
 import json
 import subprocess
 from pathlib import Path
@@ -36,7 +37,7 @@ def base_req(sha):
     }
 
 
-ENGINE = "/home/nascode/work/100ways"
+ENGINE = os.environ.get("CODEFOUNDRY_100WAYS_PATH", "/home/nascode/work/100ways")
 
 
 def test_ensure_git_repo_idempotent(tmp_path):

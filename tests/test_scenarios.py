@@ -50,7 +50,7 @@ def base_req(sha, **overrides):
     return r
 
 
-ENGINE = "/home/nascode/work/100ways"
+ENGINE = os.environ.get("CODEFOUNDRY_100WAYS_PATH", "/home/nascode/work/100ways")
 
 
 def _run(req, tmp_path, *, name="src", files=None, dry_run=True, **kwargs):

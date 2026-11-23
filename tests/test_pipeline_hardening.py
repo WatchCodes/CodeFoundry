@@ -1,3 +1,4 @@
+import os
 import json
 import subprocess
 from pathlib import Path
@@ -48,7 +49,7 @@ def base_req(sha: str, **overrides):
     return r
 
 
-ENGINE = "/home/nascode/work/100ways"
+ENGINE = os.environ.get("CODEFOUNDRY_100WAYS_PATH", "/home/nascode/work/100ways")
 GOOD_FILES = {"README.md": "Hello\n", "LICENSE": "MIT License\n\nPermission is hereby granted...\n"}
 
 

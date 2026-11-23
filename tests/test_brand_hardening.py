@@ -8,7 +8,7 @@ from codefoundry.brand import BrandError, BrandResult, run_brand
 from codefoundry.credits import ensure_credits, ensure_notice
 
 
-ENGINE = "/home/nascode/work/100ways"
+ENGINE = os.environ.get("CODEFOUNDRY_100WAYS_PATH", "/home/nascode/work/100ways")
 
 
 def _git(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
