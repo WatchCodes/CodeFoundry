@@ -39,27 +39,6 @@ def _schemas_dir() -> Path:
         return repo_schemas
 
 
-_ADDITIVE_CHECKPOINT_STAGES = ("start", "receipt", "ship", "license", "credits")
-
-
-def _apply_additive_compat(schema_name: str, schema: dict[str, Any]) -> dict[str, Any]:
-    """Apply additive, backward-compatible schema relaxations for in-flight producers.
-
-    These do not weaken required fields or type safety; they only accept known
-    additive stage values that predate schema enum updates.
-    """
-    if schema_name == "migration-report":
-        try:
-            stages = schema["properties"]["receipt"]["properties"]["checkpoints"]["items"]["properties"]["stage"]["enum"]
-            if isinstance(stages, list):
-                for stage in _ADDITIVE_CHECKPOINT_STAGES:
-                    if stage not in stages:
-                        stages.append(stage)
-        except Exception:
-            pass
-    return schema
-
-
 @lru_cache(maxsize=None)
 def load_schema(name: str) -> dict[str, Any]:
     if not isinstance(name, str):
@@ -73,7 +52,7 @@ def load_schema(name: str) -> dict[str, Any]:
         schema = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         raise ValueError(f"invalid JSON in schema {name!r} ({path}): {exc}") from exc
-    return _apply_additive_compat(name, schema)
+    return schema
 
 
 @lru_cache(maxsize=1)

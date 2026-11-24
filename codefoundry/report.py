@@ -8,7 +8,9 @@ from typing import Any
 from .contracts import validate
 
 TERMINAL_STATUSES = {"VERIFIED", "FAILED", "REQUIRES_REVIEW"}
-# Schema-defined stages plus additive compat stages observed in in-flight pipeline flows.
+# Mirrors the canonical migration-report.schema.json stage enum for fast local
+# validation. tests/test_report_contracts_hardening.py asserts exact parity with
+# the raw on-disk schema so this mirror cannot drift away from the contract.
 _ADDITIVE_CHECKPOINT_STAGES = {"start", "receipt", "ship", "license", "credits"}
 CHECKPOINT_STAGES = {
     "validate",

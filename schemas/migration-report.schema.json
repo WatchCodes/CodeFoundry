@@ -41,7 +41,11 @@
             "type": "object",
             "required": ["stage", "at", "ok"],
             "properties": {
-              "stage": { "type": "string", "enum": ["validate", "scan", "clone", "create", "push", "brand", "gate", "verify", "report"] },
+              "stage": {
+                "type": "string",
+                "description": "Audit stages emitted by CodeFoundry receipts. start, receipt, license, credits and ship are emitted by real and dry-run slices; every consumer must accept them.",
+                "enum": ["validate", "scan", "clone", "create", "push", "brand", "gate", "verify", "report", "start", "receipt", "license", "credits", "ship"]
+              },
               "at": { "type": "string", "format": "date-time" },
               "ok": { "type": "boolean" },
               "detail": { "type": "string" }

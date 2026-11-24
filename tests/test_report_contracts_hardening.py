@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from jsonschema.exceptions import ValidationError
 
@@ -213,3 +215,33 @@ def test_terminal_statuses_are_strict():
 def test_checkpoint_stages_match_schema_contract():
     assert "report" in CHECKPOINT_STAGES
     assert "validate" in CHECKPOINT_STAGES
+
+
+def test_checkpoint_stage_source_of_truth_is_the_canonical_schema():
+    # Read the raw on-disk schema, not load_schema(): an in-memory compat shim
+    # must never mask a drift between the shared contract and emitted reports.
+    from codefoundry.contracts import _schemas_dir
+
+    raw = json.loads((_schemas_dir() / "migration-report.schema.json").read_text(encoding="utf-8"))
+    enum = set(
+        raw["properties"]["receipt"]["properties"]["checkpoints"]["items"]["properties"]["stage"]["enum"]
+    )
+    # Stages emitted by codefoundry.pipeline.run_slice must be declared in the
+    # shared schema, otherwise downstream consumers reject real reports.
+    emitted = {
+        "start", "receipt", "validate", "scan", "license", "clone",
+        "brand", "credits", "gate", "ship", "report",
+    }
+    assert emitted <= enum
+    assert CHECKPOINT_STAGES == enum
+
+
+def test_unknown_checkpoint_stage_is_still_rejected():
+    report = build_migration_report(**valid_report_kwargs())
+    bad = {"stage": "not_a_real_stage", "at": "2026-11-24T00:00:00Z", "ok": True}
+    report["receipt"]["checkpoints"] = [bad]
+    ok, errors = is_valid("migration-report", report)
+    assert ok is False
+    assert any("not_a_real_stage" in e for e in errors)
+    with pytest.raises(ValueError, match="not_a_real_stage"):
+        validate_checkpoint(bad)
