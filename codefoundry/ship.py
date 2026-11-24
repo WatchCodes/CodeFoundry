@@ -196,10 +196,11 @@ def ship_private_repo(
     repo_existed = view.returncode == 0
     if repo_existed:
         is_private = _repo_is_private(dest)
-        if is_private is False:
+        if is_private is not True:
             raise ShipError(
-                f"private-first enforcement: existing repo {dest!r} is not private. "
-                "Refusing to ship to a non-private destination."
+                "private-first enforcement: could not verify "
+                f"existing repo {dest!r} is private. "
+                "Refusing to ship to a destination with unverified privacy."
             )
     else:
         create = _run_raw(
@@ -213,10 +214,11 @@ def ship_private_repo(
             if view2.returncode == 0:
                 repo_existed = True
                 is_private = _repo_is_private(dest)
-                if is_private is False:
+                if is_private is not True:
                     raise ShipError(
-                        f"private-first enforcement: existing repo {dest!r} is not private. "
-                        "Refusing to ship to a non-private destination."
+                        "private-first enforcement: could not verify "
+                        f"existing repo {dest!r} is private. "
+                        "Refusing to ship to a destination with unverified privacy."
                     )
             else:
                 raise ShipError(
