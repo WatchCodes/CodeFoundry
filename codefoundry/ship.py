@@ -37,6 +37,7 @@ class ShipResult:
 
 
 _DEST_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+DEFAULT_COMMAND_TIMEOUT = 300
 
 
 def _require_git() -> None:
@@ -68,8 +69,34 @@ def _validate_destination(destination: str) -> str:
     return dest
 
 
-def _run(cmd: list[str], *, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
-    p = subprocess.run(cmd, cwd=str(cwd) if cwd else None, text=True, capture_output=True)
+def _run_raw(
+    cmd: list[str],
+    *,
+    cwd: Path | None = None,
+    timeout: int = DEFAULT_COMMAND_TIMEOUT,
+    **kwargs: Any,
+) -> subprocess.CompletedProcess[str]:
+    """Run one command with a hard deadline; never inherit an unbounded wait."""
+    kwargs.pop("text", None)
+    kwargs.pop("capture_output", None)
+    try:
+        return subprocess.run(
+            cmd, cwd=str(cwd) if cwd else None, text=True, capture_output=True, timeout=timeout,
+            **kwargs,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise ShipError(f"command timed out after {timeout}s: {' '.join(cmd)}") from exc
+    except OSError as exc:
+        raise ShipError(f"failed to execute {' '.join(cmd)}: {exc}") from exc
+
+
+def _run(
+    cmd: list[str],
+    *,
+    cwd: Path | None = None,
+    timeout: int = DEFAULT_COMMAND_TIMEOUT,
+) -> subprocess.CompletedProcess[str]:
+    p = _run_raw(cmd, cwd=cwd, timeout=timeout)
     if p.returncode != 0:
         raise ShipError(
             f"command failed (exit {p.returncode}): {' '.join(cmd)}\n"
@@ -93,15 +120,15 @@ def ensure_git_repo(repo_dir: Path) -> str:
     _run(["git", "config", "user.name", "WatchCodes Bot"], cwd=root)
     _run(["git", "config", "user.email", "bot@watchcodes.local"], cwd=root)
     # commit if there is no HEAD or there are staged/unstaged changes
-    head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, text=True, capture_output=True)
-    status = subprocess.run(["git", "status", "--porcelain"], cwd=root, text=True, capture_output=True)
+    head = _run_raw(["git", "rev-parse", "HEAD"], cwd=root, text=True, capture_output=True)
+    status = _run_raw(["git", "status", "--porcelain"], cwd=root, text=True, capture_output=True)
     if head.returncode != 0 or status.stdout.strip():
         _run(["git", "add", "-A"], cwd=root)
         # avoid empty commit failure
-        staged = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=root)
+        staged = _run_raw(["git", "diff", "--cached", "--quiet"], cwd=root)
         if staged.returncode != 0 or head.returncode != 0:
             msg = "Initial branded snapshot" if head.returncode != 0 else "Update branded snapshot"
-            commit = subprocess.run(["git", "commit", "-m", msg], cwd=root, text=True, capture_output=True)
+            commit = _run_raw(["git", "commit", "-m", msg], cwd=root, text=True, capture_output=True)
             if commit.returncode != 0:
                 # If nothing to commit after race, ignore; otherwise fail
                 if "nothing to commit" not in (commit.stdout + commit.stderr).lower():
@@ -114,7 +141,7 @@ def ensure_git_repo(repo_dir: Path) -> str:
 
 
 def _repo_is_private(destination: str) -> bool | None:
-    p = subprocess.run(
+    p = _run_raw(
         ["gh", "repo", "view", destination, "--json", "isPrivate", "-q", ".isPrivate"],
         text=True,
         capture_output=True,
@@ -165,7 +192,7 @@ def ship_private_repo(
     _require_gh()
 
     # create repo via gh; idempotent - if exists, continue
-    view = subprocess.run(["gh", "repo", "view", dest], text=True, capture_output=True)
+    view = _run_raw(["gh", "repo", "view", dest], text=True, capture_output=True)
     repo_existed = view.returncode == 0
     if repo_existed:
         is_private = _repo_is_private(dest)
@@ -175,14 +202,14 @@ def ship_private_repo(
                 "Refusing to ship to a non-private destination."
             )
     else:
-        create = subprocess.run(
+        create = _run_raw(
             ["gh", "repo", "create", dest, "--private"],
             text=True,
             capture_output=True,
         )
         if create.returncode != 0:
             # race/retry: if it exists now, continue; else fail
-            view2 = subprocess.run(["gh", "repo", "view", dest], text=True, capture_output=True)
+            view2 = _run_raw(["gh", "repo", "view", dest], text=True, capture_output=True)
             if view2.returncode == 0:
                 repo_existed = True
                 is_private = _repo_is_private(dest)
@@ -203,11 +230,11 @@ def ship_private_repo(
 
     remote_url = f"https://github.com/{dest}.git"
     has_origin = (
-        subprocess.run(["git", "remote", "get-url", "origin"], cwd=root, capture_output=True).returncode == 0
+        _run_raw(["git", "remote", "get-url", "origin"], cwd=root).returncode == 0
     )
     remote_updated = False
     if has_origin:
-        current = subprocess.run(
+        current = _run_raw(
             ["git", "remote", "get-url", "origin"], cwd=root, text=True, capture_output=True
         )
         current_url = current.stdout.strip()
@@ -218,7 +245,7 @@ def ship_private_repo(
         _run(["git", "remote", "add", "origin", remote_url], cwd=root)
         remote_updated = True
 
-    push = subprocess.run(
+    push = _run_raw(
         ["git", "push", "-u", "origin", "HEAD:main"],
         cwd=root,
         text=True,

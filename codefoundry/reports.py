@@ -16,6 +16,30 @@ class ReportWriteError(RuntimeError):
     pass
 
 
+DEFAULT_COMMAND_TIMEOUT = 180
+
+
+def _run(
+    cmd: list[str],
+    *,
+    cwd: Path | None = None,
+    timeout: int = DEFAULT_COMMAND_TIMEOUT,
+    **kwargs: Any,
+) -> subprocess.CompletedProcess[str]:
+    """Run one git command with a hard deadline and deterministic text output."""
+    kwargs.pop("text", None)
+    kwargs.pop("capture_output", None)
+    try:
+        return subprocess.run(
+            cmd, cwd=str(cwd) if cwd else None, text=True, capture_output=True, timeout=timeout,
+            **kwargs,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise ReportWriteError(f"command timed out after {timeout}s: {' '.join(cmd)}") from exc
+    except OSError as exc:
+        raise ReportWriteError(f"failed to execute {' '.join(cmd)}: {exc}") from exc
+
+
 def _normalize_for_compare(report: dict[str, Any]) -> dict[str, Any]:
     """Normalize volatile fields for idempotent comparison."""
     import copy
@@ -91,34 +115,34 @@ def write_report_to_branch(
         raise ReportWriteError(f"not a git repo: {root}")
 
     # ensure local branch exists
-    branch_exists = subprocess.run(["git", "rev-parse", "--verify", branch], cwd=root, text=True, capture_output=True).returncode == 0
+    branch_exists = _run(["git", "rev-parse", "--verify", branch], cwd=root, text=True, capture_output=True).returncode == 0
     if not branch_exists:
         # create orphan-ish branch from current HEAD without changing files; use branch from current
-        subprocess.run(["git", "branch", branch], cwd=root, text=True, capture_output=True)
+        _run(["git", "branch", branch], cwd=root, text=True, capture_output=True)
 
     # use a temporary worktree to avoid disturbing current checkout
     import tempfile
 
     with tempfile.TemporaryDirectory(prefix="cf-reports-") as td:
         wt = Path(td) / "wt"
-        add = subprocess.run(["git", "worktree", "add", str(wt), branch], cwd=root, text=True, capture_output=True)
+        add = _run(["git", "worktree", "add", str(wt), branch], cwd=root, text=True, capture_output=True)
         if add.returncode != 0:
             raise ReportWriteError(f"git worktree add failed: {add.stdout}\n{add.stderr}")
         try:
             out_dir = wt / reports_subdir
             p = write_report(report, out_dir)
             rel = p.relative_to(wt).as_posix()
-            subprocess.run(["git", "add", rel], cwd=wt, check=True, capture_output=True, text=True)
-            diff = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=wt)
+            _run(["git", "add", rel], cwd=wt, check=True, capture_output=True, text=True)
+            diff = _run(["git", "diff", "--cached", "--quiet"], cwd=wt)
             if diff.returncode != 0:
                 batch = report.get("batch_id", "unknown")
                 source = str(report.get("source", "unknown")).replace("/", "__")
                 status = report.get("status", "unknown")
                 msg = f"report: {batch} {source} {status}"
-                subprocess.run(["git", "commit", "-m", msg], cwd=wt, check=True, capture_output=True, text=True)
+                _run(["git", "commit", "-m", msg], cwd=wt, check=True, capture_output=True, text=True)
                 if push:
-                    subprocess.run(["git", "push", remote, f"{branch}:{branch}"], cwd=wt, check=True, capture_output=True, text=True)
+                    _run(["git", "push", remote, f"{branch}:{branch}"], cwd=wt, check=True, capture_output=True, text=True)
             return root / reports_subdir / p.name
         finally:
-            subprocess.run(["git", "worktree", "remove", "--force", str(wt)], cwd=root, text=True, capture_output=True)
+            _run(["git", "worktree", "remove", "--force", str(wt)], cwd=root, text=True, capture_output=True)
 
