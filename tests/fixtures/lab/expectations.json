@@ -3,7 +3,7 @@
   "scenarios": {
     "permissive": {"expected_status": "REQUIRES_REVIEW", "checks": {"created": false, "named": true, "owned": true, "gated": true, "license_kept": true, "credits": true}},
     "no_licence": {"expected_status": "FAILED", "checks": {"license_kept": false}},
-    "copyleft": {"expected_status_any": ["VERIFIED", "REQUIRES_REVIEW"], "license_detected": "GPL-3.0-only"},
+    "copyleft": {"expected_status": "REQUIRES_REVIEW", "license_detected": "GPL-3.0-only"},
     "hermes_in_filenames": {"checks": {"gated": true}},
     "nous_in_docs": {"checks": {"gated": true}},
     "lockfiles": {"expected_status_any": ["VERIFIED", "REQUIRES_REVIEW"]},

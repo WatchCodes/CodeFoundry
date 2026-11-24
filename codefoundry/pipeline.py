@@ -21,10 +21,16 @@ from .ship import ship_private_repo
 
 TERMINAL_STATUSES = {"VERIFIED", "FAILED", "REQUIRES_REVIEW"}
 
+# Copyleft families require human review before shipment (CODEFOUNDRY_PLAN.md).
+# 'preserved' stays True because the license itself is detected and intact; the
+# review flag is what blocks the run, not a claim that the license was lost.
+_COPYLEFT_PREFIXES = ("GPL-", "AGPL-", "LGPL-", "MPL-")
+
 
 def _license_obj(detected: str | None) -> dict[str, Any]:
     spdx = detected if detected and detected not in {"UNKNOWN", "NONE"} else "NOASSERTION"
-    return {"detected": spdx, "preserved": spdx not in {"NOASSERTION", "OTHER"}, "review_required": spdx in {"NOASSERTION", "OTHER"}}
+    needs_review = spdx in {"NOASSERTION", "OTHER"} or spdx.startswith(_COPYLEFT_PREFIXES)
+    return {"detected": spdx, "preserved": spdx not in {"NOASSERTION", "OTHER"}, "review_required": needs_review}
 
 
 def _safe_sha(value: Any) -> str:
@@ -80,7 +86,7 @@ def _unwrap_receipt(obj: dict[str, Any] | None) -> tuple[dict[str, Any] | None, 
     return obj, None, {}
 
 
-def _failed_report(req: dict[str, Any], *, stage: str, reason: str, checkpoints: list[dict[str, Any]], detected_license: str | None = None, destination_sha: str | None = None) -> dict[str, Any]:
+def _failed_report(req: dict[str, Any], *, stage: str, reason: str, checkpoints: list[dict[str, Any]], detected_license: str | None = None, destination_sha: str | None = None, status: str = "FAILED") -> dict[str, Any]:
     batch_id = str(req.get("batch_id", "unknown"))
     source = str(req.get("source", "unknown/unknown"))
     destination = f"{req.get('destination_owner','unknown')}/{req.get('target_name','unknown')}"
@@ -93,7 +99,7 @@ def _failed_report(req: dict[str, Any], *, stage: str, reason: str, checkpoints:
         batch_id=batch_id,
         source=source,
         destination=destination,
-        status="FAILED",
+        status=status,
         checks={"created": False, "named": False, "owned": False, "gated": False, "license_kept": lic["preserved"], "credits": False},
         receipt={"idempotency_key": f"{batch_id}::{source}", "destination_repo_id": 0, "source_sha": sha, "destination_sha": dest_sha, "checkpoints": cp},
         license_info=lic,
@@ -193,6 +199,17 @@ def run_slice(
         if not lic["preserved"]:
             reason = _error_detail("scan", f"undetected or unsupported license: {detected!r}", context={"source": source, "sha": sha})
             return _emit(_failed_report(req, stage="scan", reason=reason, checkpoints=checkpoints, detected_license=detected))
+        if lic["review_required"]:
+            # Copyleft (and ambiguous) licenses block shipment. Emit the review
+            # report here, before clone/brand/ship, so nothing is published.
+            reason = _error_detail(
+                "scan", f"license requires human review: {detected!r}",
+                context={"source": source, "sha": sha},
+            )
+            return _emit(_failed_report(
+                req, stage="license", reason=reason, checkpoints=checkpoints,
+                detected_license=detected, status="REQUIRES_REVIEW",
+            ))
 
         try:
             branded_clone = clone_snapshot(clone_ref, sha, clone_dir)
