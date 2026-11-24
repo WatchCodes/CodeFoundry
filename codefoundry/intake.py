@@ -12,9 +12,6 @@ class IntakeError(ValueError):
     pass
 
 
-_CREATE_LICENSES_REJECTED = {None, "", "NOASSERTION", "NONE", "UNKNOWN"}
-
-
 def idempotency_key(request: dict[str, Any]) -> str:
     batch = request.get("batch_id", "")
     source = request.get("source", "")
@@ -27,20 +24,16 @@ def validate_migration_request(request: dict[str, Any]) -> dict[str, Any]:
         raise IntakeError("MigrationRequest schema validation failed:\n" + "\n".join(errors))
 
     action = request["action"]
-    license_value = request.get("license")
 
+    # The request license is advisory: RepoAtlas cannot detect it at discovery
+    # time and emits NOASSERTION. The authoritative gate is the scan stage,
+    # which detects the real license from the cloned repo (missing/unknown ->
+    # FAILED, copyleft -> REQUIRES_REVIEW). Rejecting unknown values here
+    # blocked every request without adding safety.
     if action == "create":
-        if license_value in _CREATE_LICENSES_REJECTED:
-            raise IntakeError(
-                f"create action requires a detectable license, got {license_value!r}"
-            )
         if request.get("subtree_path"):
             raise IntakeError("create action must not include subtree_path")
     elif action == "import_subtree":
         if not request.get("subtree_path"):
             raise IntakeError("import_subtree action requires subtree_path")
-        if license_value in _CREATE_LICENSES_REJECTED:
-            raise IntakeError(
-                f"import_subtree action requires a detectable license, got {license_value!r}"
-            )
     return dict(request)

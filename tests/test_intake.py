@@ -49,14 +49,16 @@ def test_unknown_field_fails_closed():
         validate_migration_request(req)
 
 
-def test_noassertion_license_rejected_for_create():
-    with pytest.raises(IntakeError):
-        validate_migration_request(valid_request(license="NOASSERTION"))
+def test_noassertion_license_accepted_for_create():
+    # RepoAtlas cannot know the license at discovery time and emits
+    # NOASSERTION; CodeFoundry detects and gates on the real license in scan.
+    doc = validate_migration_request(valid_request(license="NOASSERTION"))
+    assert doc["license"] == "NOASSERTION"
 
 
-def test_null_license_rejected_for_create():
-    with pytest.raises(IntakeError):
-        validate_migration_request(valid_request(license=None))
+def test_null_license_accepted_for_create():
+    doc = validate_migration_request(valid_request(license=None))
+    assert doc["license"] is None
 
 
 def test_create_forbids_subtree_path():

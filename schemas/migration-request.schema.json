@@ -13,7 +13,7 @@
     "destination_owner": { "type": "string", "pattern": "^[A-Za-z0-9-]+$", "description": "Approved owner. WatchCodes org or an allowlisted user." },
     "target_name": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,100}$", "description": "From the canonical rename algorithm; already collision-checked by RepoAtlas." },
     "sha": { "$ref": "common.definitions.json#/$defs/sha" },
-    "license": { "$ref": "common.definitions.json#/$defs/license_spdx", "description": "Must not be null/NOASSERTION/OTHER for action=create; CodeFoundry rejects." },
+    "license": { "$ref": "common.definitions.json#/$defs/license_spdx", "description": "Advisory at intake: RepoAtlas emits NOASSERTION when it cannot detect a license. The authoritative gate is CodeFoundry's scan stage, which detects the real license from the cloned repo." },
     "action": { "$ref": "common.definitions.json#/$defs/action" },
     "subtree_path": { "type": "string", "description": "Required when action=import_subtree; forbidden otherwise." },
     "provenance": {
@@ -31,10 +31,6 @@
     {
       "if": { "properties": { "action": { "const": "import_subtree" } } },
       "then": { "required": ["subtree_path"] }
-    },
-    {
-      "if": { "properties": { "action": { "const": "create" } } },
-      "then": { "properties": { "license": { "type": "string" } } }
     },
     {
       "if": { "properties": { "action": { "const": "create" } } },
